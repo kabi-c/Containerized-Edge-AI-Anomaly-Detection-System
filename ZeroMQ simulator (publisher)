@@ -1,0 +1,18 @@
+# scripts/zmq_publisher.py 
+import time, json, random, zmq 
+ctx = zmq.Context() 
+sock = ctx.socket(zmq.PUB) 
+sock.bind("tcp://*:5556")   # publisher binds; subscribers connect 
+ 
+topic = "sensor" 
+try: 
+    while True: 
+        msg = { 
+            "temp": round(30 + random.gauss(0,1), 2), 
+            "humidity": round(60 + random.gauss(0,2), 2), 
+            "motion": 1 if random.random() < 0.15 else 0 
+        } 
+        sock.send_string(f"{topic} {json.dumps(msg)}") 
+        time.sleep(0.2)  # 5 Hz 
+except KeyboardInterrupt: 
+    pass
