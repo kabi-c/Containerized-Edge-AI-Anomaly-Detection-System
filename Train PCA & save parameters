@@ -1,0 +1,36 @@
+# scripts/train_pca_params.py 
+import os, json, numpy as np 
+from sklearn.decomposition import PCA 
+from sklearn.preprocessing import StandardScaler 
+ 
+os.makedirs("models", exist_ok=True) 
+ 
+# --- synthetic training data (replace with your CSV real data if available) --- 
+rng = np.random.RandomState(42) 
+X_normal = rng.normal(loc=[30,60,0.1], scale=[2.0,5.0,0.05], size=(2000,3)) 
+X_anom = rng.uniform(low=[40,80,0.5], high=[60,100,1.0], size=(50,3)) 
+X = np.vstack([X_normal, X_anom]).astype(np.float32) 
+ 
+# --- scale and save scaler --- 
+scaler = StandardScaler() 
+Xs = scaler.fit_transform(X) 
+json.dump({"mean": scaler.mean_.tolist(), "scale": scaler.scale_.tolist()}, 
+open("models/scaler.json","w")) 
+ 
+# --- PCA (keep full dims for exact reconstruction; you can reduce dims for 
+compression) --- 
+pca = PCA(n_components=3) 
+pca.fit(Xs) 
+np.savetxt("models/pca_components.csv", pca.components_, delimiter=",") 
+np.savetxt("models/pca_mean.csv", pca.mean_[None,:], delimiter=",") 
+ 
+# --- threshold: reconstruction L2 error 99th percentile --- 
+Xrec = pca.inverse_transform(pca.transform(Xs)) 
+errors = np.linalg.norm(Xs - Xrec, axis=1) 
+19 
+ 
+thr = float(np.percentile(errors, 99)) 
+json.dump({"threshold": thr}, open("models/threshold.json","w")) 
+ 
+print("Saved models: scaler.json, pca_components.csv, pca_mean.csv, 
+threshold.json")
